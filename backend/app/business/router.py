@@ -189,6 +189,83 @@ async def seed_demo_opportunities(db: Session = Depends(get_db)):
     return {"message": f"Seeded {added} demo opportunities"}
 
 
+class MatchToolInput(BaseModel):
+    user_id: str
+    tool_name: str
+    tool_description: str
+
+
+@router.post("/match-tool")
+async def match_tool_to_business(input: MatchToolInput, db: Session = Depends(get_db)):
+    """Match a specific tool's capabilities against user's business contexts.
+
+    This bridges Tools -> Business: after exploring a tool, check if it matches your business.
+    """
+    import json
+    # Check if user has business contexts
+    contexts = db.query(BusinessContext).filter(BusinessContext.user_id == input.user_id).all()
+    if not contexts:
+        return {"matches": [], "message": "请先录入你的业务信息，AI才能为你匹配机遇"}
+
+    capability = f"{input.tool_name}: {input.tool_description}"
+
+    # Check for existing match with same tool
+    existing = db.query(OpportunityMatch).filter(
+        OpportunityMatch.user_id == input.user_id,
+        OpportunityMatch.ai_capability.contains(input.tool_name),
+    ).all()
+
+    if existing:
+        # Return existing matches
+        return {
+            "matches": [
+                {
+                    "id": m.id,
+                    "ai_capability": m.ai_capability,
+                    "business_need": m.business_need,
+                    "opportunity_analysis": m.opportunity_analysis,
+                    "similarity_score": m.similarity_score,
+                    "status": m.status,
+                }
+                for m in existing
+            ],
+            "message": f"找到 {len(existing)} 条与 {input.tool_name} 相关的业务匹配",
+        }
+
+    # Run new matching
+    try:
+        from app.business.matcher import match_new_capability
+        await match_new_capability(None, capability, db)
+    except Exception as e:
+        print(f"[match-tool] Matching error: {e}", flush=True)
+
+    # Fetch newly created matches
+    matches = (
+        db.query(OpportunityMatch)
+        .filter(
+            OpportunityMatch.user_id == input.user_id,
+            OpportunityMatch.ai_capability.contains(input.tool_name),
+        )
+        .order_by(OpportunityMatch.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    return {
+        "matches": [
+            {
+                "id": m.id,
+                "ai_capability": m.ai_capability,
+                "business_need": m.business_need,
+                "opportunity_analysis": m.opportunity_analysis,
+                "similarity_score": m.similarity_score,
+                "status": m.status,
+            }
+            for m in matches
+        ],
+        "message": f"为 {input.tool_name} 找到 {len(matches)} 条业务匹配",
+    }
+
+
 @router.get("/opportunities/{user_id}")
 async def get_opportunities(user_id: str, db: Session = Depends(get_db)):
     """Get matched opportunities for a user."""

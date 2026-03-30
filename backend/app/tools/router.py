@@ -1,10 +1,92 @@
+import json
+from datetime import datetime
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.db.models import ToolInfo
+from app.db.models import ToolInfo, ToolSearchHistory
 
 router = APIRouter()
+
+
+# ---- Tool Search History ---- #
+
+class ToolHistoryInput(BaseModel):
+    user_id: str
+    tool_name: str
+    tool_data: Optional[dict] = None
+
+
+@router.get("/history/{user_id}")
+async def get_tool_history(user_id: str, db: Session = Depends(get_db)):
+    """Get tool search history for a user, most recent first."""
+    records = (
+        db.query(ToolSearchHistory)
+        .filter(ToolSearchHistory.user_id == user_id)
+        .order_by(ToolSearchHistory.searched_at.desc())
+        .limit(20)
+        .all()
+    )
+    results = []
+    for r in records:
+        data = None
+        if r.tool_data:
+            try:
+                data = json.loads(r.tool_data)
+            except Exception:
+                pass
+        results.append({
+            "id": r.id,
+            "tool_name": r.tool_name,
+            "tool_data": data,
+            "searched_at": r.searched_at.isoformat() if r.searched_at else None,
+        })
+    return results
+
+
+@router.post("/history")
+async def save_tool_history(input: ToolHistoryInput, db: Session = Depends(get_db)):
+    """Save or update a tool search history entry (upsert by user_id + tool_name)."""
+    existing = (
+        db.query(ToolSearchHistory)
+        .filter(ToolSearchHistory.user_id == input.user_id,
+                ToolSearchHistory.tool_name.ilike(input.tool_name))
+        .first()
+    )
+    data_str = json.dumps(input.tool_data, ensure_ascii=False) if input.tool_data else None
+    if existing:
+        existing.tool_data = data_str
+        existing.searched_at = datetime.utcnow()
+        db.commit()
+        return {"message": "updated", "id": existing.id}
+    else:
+        record = ToolSearchHistory(
+            user_id=input.user_id,
+            tool_name=input.tool_name,
+            tool_data=data_str,
+            searched_at=datetime.utcnow(),
+        )
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        return {"message": "created", "id": record.id}
+
+
+@router.delete("/history/{user_id}/{tool_name}")
+async def delete_tool_history(user_id: str, tool_name: str, db: Session = Depends(get_db)):
+    """Delete a tool search history entry."""
+    record = (
+        db.query(ToolSearchHistory)
+        .filter(ToolSearchHistory.user_id == user_id,
+                ToolSearchHistory.tool_name.ilike(tool_name))
+        .first()
+    )
+    if record:
+        db.delete(record)
+        db.commit()
+    return {"message": "deleted"}
 
 
 @router.get("/search")

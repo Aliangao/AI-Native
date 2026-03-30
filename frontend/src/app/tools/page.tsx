@@ -8,6 +8,7 @@ const API_BASE = "";
 const CACHE_KEY = "tools_cache";
 const HISTORY_KEY = "tools_history";
 const MAX_HISTORY = 8;
+const USER_ID = "demo_user";
 
 interface ToolInfo {
   name: string;
@@ -90,8 +91,15 @@ function ToolsPageContent() {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "guide" | "register">("overview");
   const [history, setHistory] = useState<string[]>([]);
+  const [serverHistory, setServerHistory] = useState<Array<{ id: number; tool_name: string; tool_data: Record<string, unknown> | null; searched_at: string | null }>>([]);
+  const [matchResult, setMatchResult] = useState<{ matches: Array<Record<string, unknown>>; message: string } | null>(null);
+  const [matching, setMatching] = useState(false);
 
-  useEffect(() => { setHistory(loadHistory()); }, []);
+  useEffect(() => {
+    setHistory(loadHistory());
+    // Load server-side history
+    fetch(`${API_BASE}/api/tools/history/${USER_ID}`).then(r => r.ok ? r.json() : []).then(setServerHistory).catch(() => {});
+  }, []);
 
   const searchTool = useCallback(
     async (toolName: string, forceRefresh = false) => {
@@ -152,9 +160,52 @@ function ToolsPageContent() {
 
       addToHistory(toolName);
       setHistory(loadHistory());
+      setMatchResult(null);
+
+      // Save to server after all promises resolve
+      Promise.all([searchPromise, guidePromise, registerPromise]).then(([t, g, r]) => {
+        const toolData = { tool: t, guide: g, register: r };
+        fetch(`${API_BASE}/api/tools/history`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: USER_ID, tool_name: toolName, tool_data: toolData }),
+        }).then(() => {
+          // Refresh server history
+          fetch(`${API_BASE}/api/tools/history/${USER_ID}`).then(r2 => r2.ok ? r2.json() : []).then(setServerHistory).catch(() => {});
+        }).catch(() => {});
+      });
     },
     [router, toast]
   );
+
+  async function matchMyBusiness() {
+    if (!tool) return;
+    setMatching(true);
+    setMatchResult(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/business/match-tool`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: USER_ID,
+          tool_name: tool.name,
+          tool_description: tool.description,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatchResult(data);
+        if (data.matches?.length > 0) {
+          toast(`找到 ${data.matches.length} 条业务匹配`, "success");
+        } else {
+          toast(data.message || "暂无匹配", "info");
+        }
+      }
+    } catch {
+      toast("匹配失败", "error");
+    }
+    setMatching(false);
+  }
 
   useEffect(() => {
     const target = initialQuery || loadHistory()[0] || "";
@@ -507,14 +558,103 @@ function ToolsPageContent() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!tool && !searching && (
+      {/* Match my business - shown after tool loaded */}
+      {tool && (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-900 text-sm">🎯 这个工具跟我有什么关系？</h3>
+              <p className="text-xs text-gray-400 mt-0.5">基于你的业务画像，自动匹配 {tool.name} 的应用机会</p>
+            </div>
+            <button
+              onClick={matchMyBusiness}
+              disabled={matching}
+              className="px-5 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all text-sm font-medium disabled:opacity-60 btn-press flex items-center gap-2"
+            >
+              {matching ? (
+                <><span className="spinner" />匹配中...</>
+              ) : "匹配我的业务"}
+            </button>
+          </div>
+          {matchResult && (
+            <div className="p-6 animate-fade-in">
+              {matchResult.matches.length > 0 ? (
+                <div className="space-y-3">
+                  {matchResult.matches.map((m: Record<string, unknown>, i: number) => {
+                    const analysis = (() => { try { return JSON.parse(m.opportunity_analysis as string); } catch { return { opportunity: m.opportunity_analysis }; } })();
+                    return (
+                      <div key={i} className="bg-orange-50 rounded-xl p-4 border border-orange-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-gray-900 text-sm">{analysis.opportunity}</h4>
+                          {analysis.relevance_score && (
+                            <span className="text-xs font-semibold text-orange-600 bg-orange-100 px-2.5 py-1 rounded-lg">{analysis.relevance_score}%</span>
+                          )}
+                        </div>
+                        {analysis.value_analysis && <p className="text-sm text-gray-500 leading-relaxed">{analysis.value_analysis}</p>}
+                        {analysis.application_method && (
+                          <p className="text-sm text-blue-600 mt-2 bg-blue-50 rounded-lg p-3 border border-blue-100">{analysis.application_method}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button
+                    onClick={() => router.push("/business")}
+                    className="text-sm text-orange-600 hover:text-orange-700 font-medium transition-colors"
+                  >
+                    查看全部机遇 →
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-gray-400 text-sm">{matchResult.message}</p>
+                  <button
+                    onClick={() => router.push("/business")}
+                    className="mt-2 text-sm text-orange-600 hover:text-orange-700 font-medium"
+                  >
+                    去录入业务信息 →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Server-side search history — shown when no active search */}
+      {!tool && !searching && serverHistory.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-500 mb-3">历史探索记录</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {serverHistory.map((item) => {
+              const td = item.tool_data as Record<string, Record<string, string>> | null;
+              const desc = td?.tool?.description || "";
+              const cat = td?.tool?.category || "";
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { setQuery(item.tool_name); searchTool(item.tool_name); }}
+                  className="bg-white rounded-xl border border-gray-100 p-4 text-left card-hover transition-all"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-gray-900 text-sm">{item.tool_name}</span>
+                    {cat && <span className="text-[11px] text-green-600 bg-green-50 px-2 py-0.5 rounded-md">{cat}</span>}
+                  </div>
+                  {desc && <p className="text-xs text-gray-400 line-clamp-2">{desc}</p>}
+                  {item.searched_at && (
+                    <p className="text-[10px] text-gray-300 mt-2">{new Date(item.searched_at).toLocaleDateString("zh-CN")}</p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state — no history at all */}
+      {!tool && !searching && serverHistory.length === 0 && history.length === 0 && (
         <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
           <p className="text-4xl mb-3">🔍</p>
           <p className="text-gray-400">搜索任意AI工具，获取使用指南和注册引导</p>
-          {history.length > 0 && (
-            <p className="text-sm text-gray-300 mt-1">点击上方历史记录快速恢复</p>
-          )}
         </div>
       )}
     </div>

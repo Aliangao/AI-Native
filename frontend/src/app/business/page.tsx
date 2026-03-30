@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useToast } from "../components/Toast";
 
 const API_BASE = "";
@@ -32,6 +33,17 @@ interface Opportunity {
 }
 
 export default function BusinessPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-12 text-gray-400">加载中...</div>}>
+      <BusinessPageContent />
+    </Suspense>
+  );
+}
+
+function BusinessPageContent() {
+  const searchParams = useSearchParams();
+  const matchParam = searchParams.get("match") || "";
+
   const [businessText, setBusinessText] = useState("");
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [profiles, setProfiles] = useState<BusinessProfile[]>([]);
@@ -40,14 +52,42 @@ export default function BusinessPage() {
   const [favIds, setFavIds] = useState<number[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<Record<string, unknown>>({});
-  const [activeSection, setActiveSection] = useState<"vault" | "opportunities">("vault");
+  const [activeSection, setActiveSection] = useState<"vault" | "opportunities">(matchParam ? "opportunities" : "vault");
   const [loading, setLoading] = useState(true);
   const [animatingFav, setAnimatingFav] = useState<number | null>(null);
+  const [matchBanner, setMatchBanner] = useState(matchParam);
   const { toast } = useToast();
 
   useEffect(() => {
-    Promise.all([fetchOpportunities(), fetchFavIds(), fetchProfiles()]).then(() => setLoading(false));
-  }, []);
+    Promise.all([fetchOpportunities(), fetchFavIds(), fetchProfiles()]).then(() => {
+      setLoading(false);
+      if (matchParam) autoMatchFromDigest(matchParam);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function autoMatchFromDigest(capability: string) {
+    try {
+      const res = await fetch(`${API_BASE}/api/business/match-tool`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: USER_ID,
+          tool_name: capability.split(/[：:,，]/)[0].trim(),
+          tool_description: capability,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.matches?.length > 0) {
+          toast(`找到 ${data.matches.length} 条业务匹配`, "success");
+          fetchOpportunities();
+        } else {
+          toast(data.message || "暂无匹配结果", "info");
+        }
+      }
+    } catch { toast("匹配失败", "error"); }
+    setMatchBanner("");
+  }
 
   async function fetchProfiles() {
     try {
@@ -155,6 +195,17 @@ export default function BusinessPage() {
         <h1 className="text-2xl font-bold text-gray-900">智能参谋</h1>
         <p className="text-gray-400 mt-1 text-sm">告诉我你的业务，AI会持续为你发现技术机遇</p>
       </div>
+
+      {/* Auto-match banner from digest */}
+      {matchBanner && (
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center gap-3 animate-fade-in">
+          <span className="spinner-dark" style={{ width: 16, height: 16, borderWidth: 2, borderTopColor: '#f97316' }} />
+          <div>
+            <p className="text-sm font-medium text-orange-800">正在为你匹配业务机遇...</p>
+            <p className="text-xs text-orange-500 mt-0.5">AI能力: {matchBanner}</p>
+          </div>
+        </div>
+      )}
 
       {/* Business context input */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">

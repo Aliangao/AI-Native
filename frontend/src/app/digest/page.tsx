@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useToast } from "../components/Toast";
 
 const API_BASE = "";
@@ -14,9 +15,29 @@ interface Article {
   category: string;
   summary: string;
   summary_zh: string | null;
+  ai_capability: string | null;
   importance: number;
   published_at: string | null;
   created_at: string | null;
+}
+
+// Extract tool name from article title for tool_release articles
+function extractToolName(title: string): string {
+  // Known tool patterns in seed data
+  const patterns = [
+    /^(Cursor)\b/i, /^(OpenAI Sora)\b/i, /^(Sora)\b/i,
+    /^(Midjourney)\b/i, /^(ElevenLabs)\b/i, /^(Dify)\b/i,
+    /^(Notion AI)\b/i, /^(Claude)\b/i, /^(Gemini)\b/i,
+    /^(LLaMA)\b/i, /^(豆包)\b/i,
+  ];
+  for (const p of patterns) {
+    const m = title.match(p);
+    if (m) return m[1];
+  }
+  // Fallback: take text before first Chinese punctuation or common verb
+  const match = title.match(/^([A-Za-z0-9\s.]+)/);
+  if (match && match[1].trim().length > 1) return match[1].trim();
+  return "";
 }
 
 const CATEGORIES = [
@@ -36,6 +57,7 @@ export default function DigestPage() {
   const [favIds, setFavIds] = useState<number[]>([]);
   const [animatingFav, setAnimatingFav] = useState<number | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     fetchArticles();
@@ -248,6 +270,8 @@ export default function DigestPage() {
               isAnimating={animatingFav === article.id}
               onToggleFavorite={() => toggleFavorite(article.id)}
               onTranslate={() => translateArticle(article.id)}
+              onExploreTool={(name) => router.push(`/tools?name=${encodeURIComponent(name)}`)}
+              onMatchBusiness={(cap) => router.push(`/business?match=${encodeURIComponent(cap)}`)}
             />
           ))}
         </div>
@@ -281,15 +305,18 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 function ArticleCard({
-  article, isFavorited, isAnimating, onToggleFavorite, onTranslate,
+  article, isFavorited, isAnimating, onToggleFavorite, onTranslate, onExploreTool, onMatchBusiness,
 }: {
   article: Article;
   isFavorited: boolean;
   isAnimating: boolean;
   onToggleFavorite: () => void;
   onTranslate: () => void;
+  onExploreTool?: (toolName: string) => void;
+  onMatchBusiness?: (capability: string) => void;
 }) {
   const [translating, setTranslating] = useState(false);
+  const toolName = (article.category === "tool_release") ? extractToolName(article.title) : "";
 
   async function handleTranslate() {
     setTranslating(true);
@@ -321,6 +348,26 @@ function ArticleCard({
               <p className="text-sm text-gray-700">{article.summary_zh}</p>
             </div>
           )}
+
+          {/* Flow action buttons — connect to other pages */}
+          <div className="flex items-center gap-2 mt-3">
+            {toolName && onExploreTool && (
+              <button
+                onClick={() => onExploreTool(toolName)}
+                className="px-3 py-1.5 rounded-lg text-xs bg-green-50 text-green-600 hover:bg-green-100 transition-all btn-press font-medium border border-green-200"
+              >
+                🛠️ 探索 {toolName}
+              </button>
+            )}
+            {article.ai_capability && onMatchBusiness && (
+              <button
+                onClick={() => onMatchBusiness(article.ai_capability!)}
+                className="px-3 py-1.5 rounded-lg text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all btn-press font-medium border border-orange-200"
+              >
+                🎯 匹配我的业务
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-2 shrink-0">

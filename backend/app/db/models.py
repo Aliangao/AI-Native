@@ -60,6 +60,16 @@ class OpportunityMatch(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class ToolSearchHistory(Base):
+    __tablename__ = "tool_search_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), nullable=False)
+    tool_name = Column(String(200), nullable=False)
+    tool_data = Column(Text)  # JSON: cached search result (overview, guide, register)
+    searched_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Favorite(Base):
     __tablename__ = "favorites"
 

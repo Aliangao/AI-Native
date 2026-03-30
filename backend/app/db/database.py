@@ -14,7 +14,7 @@ class Base(DeclarativeBase):
 
 def init_db():
     os.makedirs("data", exist_ok=True)
-    from app.db.models import DigestArticle, ToolInfo, BusinessContext, Favorite
+    from app.db.models import DigestArticle, ToolInfo, BusinessContext, ToolSearchHistory, Favorite
     Base.metadata.create_all(bind=engine)
 
 
