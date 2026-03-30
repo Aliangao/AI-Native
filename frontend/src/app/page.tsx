@@ -25,7 +25,7 @@ export default async function Dashboard() {
   const { articles, opportunities } = await getStats();
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
           AI Native 工作台

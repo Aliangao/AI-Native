@@ -171,7 +171,7 @@ function ToolsPageContent() {
   ];
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">工具雷达</h1>
         <p className="text-gray-400 mt-1 text-sm">搜索AI工具，获取使用指南、场景分析、一键注册</p>
@@ -524,7 +524,7 @@ function ToolsPageContent() {
 export default function ToolsPage() {
   return (
     <Suspense fallback={
-      <div className="max-w-5xl space-y-6">
+      <div className="space-y-6">
         <div className="skeleton h-8 w-40" />
         <div className="skeleton h-12 w-full rounded-xl" />
         <div className="skeleton h-64 w-full rounded-2xl" />

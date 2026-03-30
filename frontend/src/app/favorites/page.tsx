@@ -71,7 +71,7 @@ export default function FavoritesPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">我的关注</h1>
         <p className="text-gray-400 mt-1 text-sm">收藏的内容会帮助系统更好地理解你的兴趣，提供更精准的匹配</p>

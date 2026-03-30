@@ -150,7 +150,7 @@ export default function BusinessPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">智能参谋</h1>
         <p className="text-gray-400 mt-1 text-sm">告诉我你的业务，AI会持续为你发现技术机遇</p>
