@@ -1,6 +1,7 @@
 """Feishu Bot - WebSocket mode connection and message pushing."""
 import os
 import json
+import traceback
 import lark_oapi as lark
 from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
 
@@ -18,8 +19,8 @@ def get_client() -> lark.Client:
     return _client
 
 
-async def send_message(receive_id: str, msg_type: str, content: str, receive_id_type: str = "open_id"):
-    """Send a message to a Feishu user or chat."""
+def send_message_sync(receive_id: str, msg_type: str, content: str, receive_id_type: str = "open_id"):
+    """Send a message to a Feishu user or chat (synchronous)."""
     client = get_client()
     body = CreateMessageRequestBody.builder() \
         .receive_id(receive_id) \
@@ -31,12 +32,24 @@ async def send_message(receive_id: str, msg_type: str, content: str, receive_id_
         .request_body(body) \
         .build()
     print(f"[Feishu] Sending {msg_type} to {receive_id} (type={receive_id_type})", flush=True)
-    response = client.im.v1.message.create(request)
-    if not response.success():
-        print(f"[Feishu] Send message failed: {response.code} - {response.msg}", flush=True)
-    else:
-        print(f"[Feishu] Message sent successfully!", flush=True)
-    return response
+    try:
+        response = client.im.v1.message.create(request)
+        if not response.success():
+            print(f"[Feishu] Send message failed: {response.code} - {response.msg}", flush=True)
+        else:
+            print(f"[Feishu] Message sent successfully!", flush=True)
+        return response
+    except Exception as e:
+        print(f"[Feishu] Exception sending message: {e}", flush=True)
+        traceback.print_exc()
+        raise
+
+
+async def send_message(receive_id: str, msg_type: str, content: str, receive_id_type: str = "open_id"):
+    """Send a message (async wrapper around sync call)."""
+    import asyncio
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, send_message_sync, receive_id, msg_type, content, receive_id_type)
 
 
 async def send_text(receive_id: str, text: str, receive_id_type: str = "open_id"):
@@ -55,7 +68,6 @@ async def push_daily_digest(digest: dict):
     """Push daily digest to subscribed users/groups."""
     from app.feishu.cards import build_digest_card
     card = build_digest_card(digest)
-    # TODO: Get subscribed chat IDs from config/database
     subscribed_chats = os.getenv("FEISHU_DIGEST_CHAT_IDS", "").split(",")
     for chat_id in subscribed_chats:
         if chat_id.strip():

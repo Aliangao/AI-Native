@@ -23,12 +23,16 @@ class TestTextRequest(BaseModel):
 async def test_text_push(req: TestTextRequest):
     """Send a test text message to verify basic push capability."""
     from app.feishu.bot import send_text
-    response = await send_text(req.receive_id, req.text, req.receive_id_type)
-    return {
-        "success": response.success() if response else False,
-        "code": response.code if response else -1,
-        "msg": response.msg if response else "no response",
-    }
+    try:
+        response = await send_text(req.receive_id, req.text, req.receive_id_type)
+        return {
+            "success": response.success() if response else False,
+            "code": response.code if response else -1,
+            "msg": response.msg if response else "no response",
+        }
+    except Exception as e:
+        import traceback
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
 
 
 @router.post("/test-card")
@@ -77,13 +81,17 @@ async def test_card_push(req: TestPushRequest):
     else:
         return {"error": f"Unknown card_type: {req.card_type}"}
 
-    response = await send_interactive_card(req.receive_id, card, req.receive_id_type)
-    return {
-        "success": response.success() if response else False,
-        "code": response.code if response else -1,
-        "msg": response.msg if response else "no response",
-        "card_type": req.card_type,
-    }
+    try:
+        response = await send_interactive_card(req.receive_id, card, req.receive_id_type)
+        return {
+            "success": response.success() if response else False,
+            "code": response.code if response else -1,
+            "msg": response.msg if response else "no response",
+            "card_type": req.card_type,
+        }
+    except Exception as e:
+        import traceback
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
 
 
 @router.get("/status")
