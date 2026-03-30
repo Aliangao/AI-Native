@@ -101,11 +101,23 @@ function ToolsPageContent() {
     fetch(`${API_BASE}/api/tools/history/${USER_ID}`).then(r => r.ok ? r.json() : []).then(setServerHistory).catch(() => {});
   }, []);
 
+  // Clear search state and go back to history view
+  function clearSearch() {
+    setTool(null);
+    setGuide(null);
+    setRegisterInfo(null);
+    setMatchResult(null);
+    setQuery("");
+    setActiveTab("overview");
+    window.history.replaceState(null, "", "/tools");
+  }
+
   const searchTool = useCallback(
     async (toolName: string, forceRefresh = false) => {
       if (!toolName.trim()) return;
       setActiveTab("overview");
-      router.replace(`/tools?name=${encodeURIComponent(toolName)}`, { scroll: false });
+      // Use window.history to avoid Suspense re-render from useSearchParams
+      window.history.replaceState(null, "", `/tools?name=${encodeURIComponent(toolName)}`);
 
       const cacheKey = toolName.toLowerCase();
       const cache = loadCache();
@@ -175,7 +187,7 @@ function ToolsPageContent() {
         }).catch(() => {});
       });
     },
-    [router, toast]
+    [toast]
   );
 
   async function matchMyBusiness() {
@@ -208,8 +220,8 @@ function ToolsPageContent() {
   }
 
   useEffect(() => {
-    const target = initialQuery || loadHistory()[0] || "";
-    if (target) { setQuery(target); searchTool(target); }
+    // Only auto-search when navigated from another page with ?name= param
+    if (initialQuery) { setQuery(initialQuery); searchTool(initialQuery); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const features = Array.isArray(tool?.features) ? tool.features : tool?.features ? [tool.features] : [];
@@ -230,6 +242,14 @@ function ToolsPageContent() {
 
       {/* Search */}
       <div className="flex gap-3">
+        {tool && (
+          <button
+            onClick={clearSearch}
+            className="px-4 py-3 bg-gray-100 text-gray-500 rounded-xl hover:bg-gray-200 transition-all text-sm font-medium btn-press shrink-0 flex items-center gap-1.5"
+          >
+            ← 返回
+          </button>
+        )}
         <input
           type="text"
           value={query}
