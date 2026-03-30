@@ -18,8 +18,13 @@ router = APIRouter()
 async def add_business_context(input: BusinessInput, db: Session = Depends(get_db)):
     """Add business context from text input."""
     from app.business.extractor import extract_and_store
-    result = await extract_and_store(input.user_id, input.content, "conversation", db)
-    return result
+    try:
+        result = await extract_and_store(input.user_id, input.content, "conversation", db)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "detail": traceback.format_exc()}
 
 
 @router.post("/upload")
