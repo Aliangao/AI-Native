@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const API_BASE = "";
 const CACHE_KEY = "tools_cache";
 const HISTORY_KEY = "tools_history";
 const MAX_HISTORY = 8;

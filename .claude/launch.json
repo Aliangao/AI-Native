@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "FastAPI Backend",
+      "runtimeExecutable": "/usr/bin/python3",
+      "runtimeArgs": ["-c", "import sys,os;sys.path.insert(0,'/tmp/ai-native-backend');os.chdir('/tmp/ai-native-backend');import uvicorn;uvicorn.run('app.main:app',host='0.0.0.0',port=8000)"],
+      "port": 8000
+    },
+    {
+      "name": "Next.js Frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "/Users/bytedance/Desktop/AI-Native/frontend"],
+      "port": 3000
+    }
+  ]
+}

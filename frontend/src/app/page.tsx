@@ -1,4 +1,5 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+// Server component: need full URL for SSR fetch; rewrites only work client-side
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
 async function getStats() {
   try {

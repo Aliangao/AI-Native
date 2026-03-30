@@ -15,6 +15,9 @@ from app.digest.scheduler import start_scheduler, stop_scheduler
 async def lifespan(app: FastAPI):
     # Startup
     init_db()
+    # Auto-seed demo data if database is empty (Railway ephemeral filesystem fix)
+    from app.db.auto_seed import auto_seed_if_empty
+    auto_seed_if_empty()
     start_scheduler()
     yield
     # Shutdown
