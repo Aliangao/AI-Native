@@ -92,8 +92,8 @@ function ToolsPageContent() {
   const [activeTab, setActiveTab] = useState<"overview" | "guide" | "register">("overview");
   const [history, setHistory] = useState<string[]>([]);
   const [serverHistory, setServerHistory] = useState<Array<{ id: number; tool_name: string; tool_data: Record<string, unknown> | null; searched_at: string | null }>>([]);
-  const [matchResult, setMatchResult] = useState<{ matches: Array<Record<string, unknown>>; message: string } | null>(null);
-  const [matching, setMatching] = useState(false);
+
+
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -106,7 +106,6 @@ function ToolsPageContent() {
     setTool(null);
     setGuide(null);
     setRegisterInfo(null);
-    setMatchResult(null);
     setQuery("");
     setActiveTab("overview");
     window.history.replaceState(null, "", "/tools");
@@ -172,7 +171,6 @@ function ToolsPageContent() {
 
       addToHistory(toolName);
       setHistory(loadHistory());
-      setMatchResult(null);
 
       // Save to server after all promises resolve
       Promise.all([searchPromise, guidePromise, registerPromise]).then(([t, g, r]) => {
@@ -189,35 +187,6 @@ function ToolsPageContent() {
     },
     [toast]
   );
-
-  async function matchMyBusiness() {
-    if (!tool) return;
-    setMatching(true);
-    setMatchResult(null);
-    try {
-      const res = await fetch(`${API_BASE}/api/business/match-tool`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: USER_ID,
-          tool_name: tool.name,
-          tool_description: tool.description,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatchResult(data);
-        if (data.matches?.length > 0) {
-          toast(`找到 ${data.matches.length} 条业务匹配`, "success");
-        } else {
-          toast(data.message || "暂无匹配", "info");
-        }
-      }
-    } catch {
-      toast("匹配失败", "error");
-    }
-    setMatching(false);
-  }
 
   useEffect(() => {
     // Only auto-search when navigated from another page with ?name= param
@@ -334,6 +303,12 @@ function ToolsPageContent() {
                     className="px-3 py-1.5 text-xs text-gray-400 border border-gray-200 rounded-lg hover:bg-white transition-colors btn-press"
                   >
                     刷新
+                  </button>
+                  <button
+                    onClick={() => router.push(`/business?match=${encodeURIComponent(tool.name + ": " + tool.description)}`)}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 text-sm font-medium transition-colors btn-press flex items-center gap-1.5"
+                  >
+                    🎯 匹配业务机遇
                   </button>
                   {(tool.getting_started_url || tool.official_url) && (
                     <a
@@ -578,65 +553,21 @@ function ToolsPageContent() {
         </div>
       )}
 
-      {/* Match my business - shown after tool loaded */}
+      {/* Quick link to business — shown after tool loaded */}
       {tool && (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-          <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-900 text-sm">🎯 这个工具跟我有什么关系？</h3>
-              <p className="text-xs text-gray-400 mt-0.5">基于你的业务画像，自动匹配 {tool.name} 的应用机会</p>
-            </div>
-            <button
-              onClick={matchMyBusiness}
-              disabled={matching}
-              className="px-5 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all text-sm font-medium disabled:opacity-60 btn-press flex items-center gap-2"
-            >
-              {matching ? (
-                <><span className="spinner" />匹配中...</>
-              ) : "匹配我的业务"}
-            </button>
+        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl border border-orange-100 p-5 flex items-center justify-between card-hover">
+          <div>
+            <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+              🎯 这个工具跟我的业务有什么关系？
+            </h3>
+            <p className="text-xs text-gray-400 mt-1">跳转到智能参谋，基于你的业务画像自动分析 {tool.name} 的应用机会</p>
           </div>
-          {matchResult && (
-            <div className="p-6 animate-fade-in">
-              {matchResult.matches.length > 0 ? (
-                <div className="space-y-3">
-                  {matchResult.matches.map((m: Record<string, unknown>, i: number) => {
-                    const analysis = (() => { try { return JSON.parse(m.opportunity_analysis as string); } catch { return { opportunity: m.opportunity_analysis }; } })();
-                    return (
-                      <div key={i} className="bg-orange-50 rounded-xl p-4 border border-orange-100">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-gray-900 text-sm">{analysis.opportunity}</h4>
-                          {analysis.relevance_score && (
-                            <span className="text-xs font-semibold text-orange-600 bg-orange-100 px-2.5 py-1 rounded-lg">{analysis.relevance_score}%</span>
-                          )}
-                        </div>
-                        {analysis.value_analysis && <p className="text-sm text-gray-500 leading-relaxed">{analysis.value_analysis}</p>}
-                        {analysis.application_method && (
-                          <p className="text-sm text-blue-600 mt-2 bg-blue-50 rounded-lg p-3 border border-blue-100">{analysis.application_method}</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <button
-                    onClick={() => router.push("/business")}
-                    className="text-sm text-orange-600 hover:text-orange-700 font-medium transition-colors"
-                  >
-                    查看全部机遇 →
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-gray-400 text-sm">{matchResult.message}</p>
-                  <button
-                    onClick={() => router.push("/business")}
-                    className="mt-2 text-sm text-orange-600 hover:text-orange-700 font-medium"
-                  >
-                    去录入业务信息 →
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          <button
+            onClick={() => router.push(`/business?match=${encodeURIComponent(tool.name + ": " + tool.description)}`)}
+            className="px-5 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all text-sm font-medium btn-press flex items-center gap-2 shrink-0"
+          >
+            去看机会 →
+          </button>
         </div>
       )}
 
