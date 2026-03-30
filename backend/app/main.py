@@ -19,9 +19,28 @@ async def lifespan(app: FastAPI):
     from app.db.auto_seed import auto_seed_if_empty
     auto_seed_if_empty()
     start_scheduler()
+    # Start Feishu WebSocket bot in background thread
+    _start_feishu_bot()
     yield
     # Shutdown
     stop_scheduler()
+
+
+def _start_feishu_bot():
+    """Start Feishu bot in a background thread so it doesn't block the server."""
+    import threading
+    try:
+        from app.feishu.websocket_bot import start_bot
+        app_id = os.getenv("FEISHU_APP_ID", "")
+        app_secret = os.getenv("FEISHU_APP_SECRET", "")
+        if not app_id or not app_secret:
+            print("[Main] Feishu bot skipped: FEISHU_APP_ID/APP_SECRET not set", flush=True)
+            return
+        thread = threading.Thread(target=start_bot, daemon=True, name="feishu-bot")
+        thread.start()
+        print("[Main] Feishu WebSocket bot started in background thread", flush=True)
+    except Exception as e:
+        print(f"[Main] Failed to start Feishu bot: {e}", flush=True)
 
 
 app = FastAPI(title="AI Native Workstation", version="0.1.0", lifespan=lifespan)
