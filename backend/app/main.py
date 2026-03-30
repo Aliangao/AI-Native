@@ -43,7 +43,10 @@ from app.tools.router import router as tools_router
 from app.business.router import router as business_router
 from app.favorites.router import router as favorites_router
 
+from app.feishu.test_router import router as feishu_test_router
+
 app.include_router(digest_router, prefix="/api/digest", tags=["digest"])
 app.include_router(tools_router, prefix="/api/tools", tags=["tools"])
 app.include_router(business_router, prefix="/api/business", tags=["business"])
 app.include_router(favorites_router, prefix="/api/favorites", tags=["favorites"])
+app.include_router(feishu_test_router, prefix="/api/feishu", tags=["feishu"])

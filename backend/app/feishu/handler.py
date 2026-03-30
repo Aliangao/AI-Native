@@ -112,14 +112,20 @@ async def handle_digest_query(user_id: str, text: str):
 
 
 async def handle_general_chat(user_id: str, text: str):
-    """Handle general conversation."""
+    """Handle general conversation.
+
+    Also silently checks if the message contains business context
+    and saves it for the smart advisor (智能参谋).
+    """
     system_msg = """你是AI Native工作台的智能助手。你的职责是：
 1. 帮助用户了解最新的AI资讯和动态
 2. 推荐和介绍AI工具
 3. 分析AI技术如何应用到用户的业务中
 
 请用友好、专业的方式回复。如果用户提到具体的AI工具，请详细介绍。
-如果用户描述了他们的业务，请建议他们说"我想录入我的业务信息"来让系统记录。"""
+如果用户描述了他们的业务场景、痛点或需求，在回复的最后加上一行：
+"💡 我已记录你的业务信息，后续有匹配的AI技术会主动通知你。"
+"""
 
     result = await call_llm(
         task="chat",
@@ -130,3 +136,24 @@ async def handle_general_chat(user_id: str, text: str):
         temperature=0.7,
     )
     await send_text(user_id, result)
+
+    # Silently try to extract business context from conversations
+    # that mention business-related keywords
+    business_keywords = [
+        "业务", "公司", "团队", "项目", "产品", "客户", "运营",
+        "销售", "营销", "市场", "供应链", "制造", "金融", "教育",
+        "医疗", "电商", "物流", "餐饮", "零售", "内容", "创作",
+        "效率", "成本", "流程", "痛点", "需求", "场景",
+    ]
+    if any(kw in text for kw in business_keywords) and len(text) >= 15:
+        try:
+            from app.business.extractor import extract_and_store
+            from app.db.database import SessionLocal
+            db = SessionLocal()
+            try:
+                await extract_and_store(user_id, text, "conversation", db)
+                print(f"[Handler] Silently saved business context from chat for user {user_id}", flush=True)
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"[Handler] Silent business extraction failed (non-critical): {e}", flush=True)

@@ -26,7 +26,7 @@ def build_digest_card(digest: dict) -> dict:
                         "tag": "button",
                         "text": {"tag": "plain_text", "content": "查看更多"},
                         "type": "primary",
-                        "url": "http://localhost:3000/digest",
+                        "url": "https://frontend-self-phi-55.vercel.app/digest",
                     },
                     {
                         "tag": "button",
