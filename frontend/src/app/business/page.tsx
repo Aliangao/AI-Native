@@ -388,6 +388,9 @@ function BusinessPageContent() {
                           </div>
                         </div>
                       )}
+                      {analysis.verification_prompt && (
+                        <VerificationPrompt prompt={analysis.verification_prompt} />
+                      )}
                       <div className="text-xs text-gray-300 pt-2 border-t border-gray-50">
                         AI能力: {opp.ai_capability}
                       </div>
@@ -439,6 +442,50 @@ function ProfileDisplay({ context }: { context: BusinessProfile["extracted_conte
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function VerificationPrompt({ prompt }: { prompt: string }) {
+  const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(prompt).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border border-violet-200 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-violet-100/50 transition-colors"
+      >
+        <h4 className="text-sm font-medium text-violet-700 flex items-center gap-1.5">
+          <span>🚀</span> 一键验证 Prompt
+          <span className="text-[10px] font-normal text-violet-400 bg-violet-100 px-1.5 py-0.5 rounded">粘贴到 Claude Code 即可运行</span>
+        </h4>
+        <span className={`text-violet-400 text-xs transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}>▼</span>
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4 animate-fade-in">
+          <div className="relative">
+            <pre className="text-sm text-gray-700 bg-white rounded-lg p-4 border border-violet-100 whitespace-pre-wrap leading-relaxed font-sans max-h-64 overflow-y-auto">{prompt}</pre>
+            <button
+              onClick={handleCopy}
+              className={`absolute top-2 right-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all btn-press ${
+                copied
+                  ? "bg-green-100 text-green-600 border border-green-200"
+                  : "bg-violet-100 text-violet-600 hover:bg-violet-200 border border-violet-200"
+              }`}
+            >
+              {copied ? "✓ 已复制" : "复制"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

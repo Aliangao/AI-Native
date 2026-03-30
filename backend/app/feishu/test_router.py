@@ -16,7 +16,7 @@ class TestPushRequest(BaseModel):
 class TestTextRequest(BaseModel):
     receive_id: str
     receive_id_type: str = "chat_id"
-    text: str = "🎉 这是一条来自 AI Native 工作台的测试消息！"
+    text: str = "🎉 这是一条来自 OneAI 工作台的测试消息！"
 
 
 @router.post("/test-text")

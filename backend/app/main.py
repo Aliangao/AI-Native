@@ -43,7 +43,7 @@ def _start_feishu_bot():
         print(f"[Main] Failed to start Feishu bot: {e}", flush=True)
 
 
-app = FastAPI(title="AI Native Workstation", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="OneAI Workstation", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

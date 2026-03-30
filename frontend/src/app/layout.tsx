@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Native Workstation",
+  title: "OneAI 工作台",
   description: "AI时代的超级个体工作台",
 };
 

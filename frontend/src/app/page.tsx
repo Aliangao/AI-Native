@@ -28,7 +28,7 @@ export default async function Dashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
-          AI Native 工作台
+          OneAI 工作台
         </h1>
         <p className="text-gray-400 mt-1 text-sm">
           让每个人都成为AI时代的超级个体

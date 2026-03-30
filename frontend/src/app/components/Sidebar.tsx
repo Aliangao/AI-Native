@@ -23,7 +23,7 @@ export default function Sidebar() {
             AI
           </div>
           <div>
-            <h1 className="text-base font-bold text-gray-900 leading-tight">AI Native</h1>
+            <h1 className="text-base font-bold text-gray-900 leading-tight">OneAI</h1>
             <p className="text-[11px] text-gray-400 leading-tight">超级个体工作台</p>
           </div>
         </div>

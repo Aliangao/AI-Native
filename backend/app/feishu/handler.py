@@ -117,7 +117,7 @@ async def handle_general_chat(user_id: str, text: str):
     Also silently checks if the message contains business context
     and saves it for the smart advisor (智能参谋).
     """
-    system_msg = """你是AI Native工作台的智能助手。你的职责是：
+    system_msg = """你是OneAI工作台的智能助手。你的职责是：
 1. 帮助用户了解最新的AI资讯和动态
 2. 推荐和介绍AI工具
 3. 分析AI技术如何应用到用户的业务中
